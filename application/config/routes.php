@@ -54,6 +54,34 @@ $route['korra/projects'] = 'korra/projects';
 $route['korra/submit_contact'] = 'korra/submit_contact';
 $route['verifikasi-otp'] = 'auth/verifikasi_otp_view';
 
+// ======================================
+// ROUTES UNTUK SISTEM POS
+// ======================================
+
+// SALES ROUTES
+$route['sales'] = 'sales/index';
+$route['sales/index'] = 'sales/index';
+$route['sales/daftar'] = 'sales/daftar';
+$route['sales/detail/(:num)'] = 'sales/detail/$1';
+$route['sales/cetak_struk/(:num)'] = 'sales/cetak_struk/$1';
+$route['sales/search_produk'] = 'sales/search_produk';
+$route['sales/get_produk/(:num)'] = 'sales/get_produk/$1';
+$route['sales/search_pelanggan'] = 'sales/search_pelanggan';
+$route['sales/buat_transaksi'] = 'sales/buat_transaksi';
+$route['sales/tambah_item'] = 'sales/tambah_item';
+$route['sales/hapus_item'] = 'sales/hapus_item';
+$route['sales/simpan_transaksi'] = 'sales/simpan_transaksi';
+$route['sales/batalkan'] = 'sales/batalkan';
+
+// LAPORAN ROUTES
+$route['laporan'] = 'laporan/harian';
+$route['laporan/harian'] = 'laporan/harian';
+$route['laporan/bulanan'] = 'laporan/bulanan';
+$route['laporan/periode'] = 'laporan/periode';
+$route['laporan/stok'] = 'laporan/stok';
+$route['laporan/best_seller'] = 'laporan/best_seller';
+$route['laporan/customer'] = 'laporan/customer';
+$route['laporan/export_csv/(:alpha)'] = 'laporan/export_csv/$1';
 
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;

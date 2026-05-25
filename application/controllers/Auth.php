@@ -4,22 +4,11 @@ defined('BASEPATH') or exit('No direct script access allowed');
 class Auth extends CI_Controller
 {
 
-    /**
-     * Index Page for this controller.
-     *
-     * Maps to the following URL
-     * 		http://example.com/index.php/welcome
-     *	- or -
-     * 		http://example.com/index.php/welcome/index
-     *	- or -
-     * Since this controller is set as the default controller in
-     * config/routes.php, it's displayed at http://example.com/
-     *
-     * So any other public methods not prefixed with an underscore will
-     * map to /index.php/welcome/<method_name>
-     * @see https://codeigniter.com/userguide3/general/urls.html
-     */
-
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->model('User_model');
+    }
 
     public function index()
     {
@@ -48,6 +37,59 @@ class Auth extends CI_Controller
         } else {
             $_SESSION['error'] = 'Email atau password salah';
             header('Location: /login');
+        }
+    }
+    public function proses_login()
+    {
+        $username = $this->input->post('email');
+        $password = $this->input->post('password');
+
+        $user = $this->User_model->check_login($username);
+
+        if ($user) {
+
+            // =========================
+            // CEK STATUS AKTIF
+            // =========================
+            if ($user['active'] != 1) {
+
+                echo json_encode([
+                    'status'  => 'inactive',
+                    'message' => 'Akun belum aktif! Silakan verifikasi OTP terlebih dahulu.',
+                    'email'   => $user['email']
+                ]);
+                return;
+            }
+
+            // =========================
+            // CEK PASSWORD
+            // =========================
+            if (password_verify($password, $user['password'])) {
+
+                // Simpan session
+                $this->session->set_userdata($user);
+
+                $response = [
+                    'status'  => 'success',
+                    'message' => 'Login berhasil',
+                    'nama'    => $user['username'],
+                    'salam'   => waktu()
+                ];
+
+                echo json_encode($response);
+            } else {
+
+                echo json_encode([
+                    'status'  => 'error',
+                    'message' => 'Password Salah!'
+                ]);
+            }
+        } else {
+
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Email tidak terdaftar!'
+            ]);
         }
     }
 }
