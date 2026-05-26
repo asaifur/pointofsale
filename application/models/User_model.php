@@ -5,10 +5,40 @@ class User_model extends CI_Model
     {
         return $this->db->get_where('users', ['email' => $username])->row_array();
     }
+
     public function register($data)
     {
         return $this->db->insert('users', $data);
     }
+
+    // ===========================
+    // UPDATE OTP
+    // ===========================
+    public function update_otp($email, $data)
+    {
+        return $this->db->where('email', $email)->update('users', $data);
+    }
+
+    // ===========================
+    // ACTIVATE ACCOUNT
+    // ===========================
+    public function activate_account($email)
+    {
+        return $this->db->where('email', $email)->update('users', [
+            'active' => 1,
+            'otp' => NULL,
+            'otp_expiry' => NULL
+        ]);
+    }
+
+    // ===========================
+    // UPDATE PASSWORD
+    // ===========================
+    public function update_password($email, $data)
+    {
+        return $this->db->where('email', $email)->update('users', $data);
+    }
+
     public function getMenuByRole($role_id)
     {
         $this->db->select('user_menu.*');
@@ -51,6 +81,7 @@ class User_model extends CI_Model
         $query = $this->db->get();
         return $query->result();
     }
+
     public function view_all_user_access()
     {
         $session_referal = $this->session->userdata('referal');

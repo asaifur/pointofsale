@@ -83,5 +83,25 @@ $route['laporan/best_seller'] = 'laporan/best_seller';
 $route['laporan/customer'] = 'laporan/customer';
 $route['laporan/export_csv/(:alpha)'] = 'laporan/export_csv/$1';
 
+// PRODUK ROUTES
+$route['produk'] = 'produk/index';
+$route['produk/index'] = 'produk/index';
+$route['produk/tambah'] = 'produk/tambah';
+$route['produk/simpan'] = 'produk/simpan';
+$route['produk/edit/(:num)'] = 'produk/edit/$1';
+$route['produk/update/(:num)'] = 'produk/update/$1';
+$route['produk/hapus/(:num)'] = 'produk/hapus/$1';
+$route['produk/detail/(:num)'] = 'produk/detail/$1';
+$route['produk/get_detail/(:num)'] = 'produk/get_detail/$1';
+$route['produk/check_kode/(:any)'] = 'produk/check_kode/$1';
+
+// DASHBOARD ROUTES
+$route['dashboard'] = 'dashboard/index';
+$route['dashboard/index'] = 'dashboard/index';
+$route['dashboard/chart_sales_7days'] = 'dashboard/chart_sales_7days';
+$route['dashboard/chart_sales_by_category'] = 'dashboard/chart_sales_by_category';
+$route['dashboard/chart_hourly_sales'] = 'dashboard/chart_hourly_sales';
+$route['dashboard/chart_top_products'] = 'dashboard/chart_top_products';
+
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;

@@ -2,62 +2,196 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
-
-
 class Dashboard extends CI_Controller
-
 {
-
-
-
     public function __construct()
-
     {
-
         parent::__construct();
-
-        // Proteksi Halaman: Cek apakah session 'logged_in' ada
-
+        // Proteksi: Cek session
         if (!$this->session->userdata('email')) {
-
             redirect('auth');
         }
-
-        $this->load->model('Halal_model');
-
-        $this->load->model('User_model');
+        $this->load->model('Penjualan_model');
+        $this->load->model('Produk_model');
+        $this->load->model('Stok_model');
+        $this->load->model('Pelanggan_model');
     }
 
-
-
+    // ========================================
+    // DASHBOARD UTAMA - POS ADMIN
+    // ========================================
     public function index()
-
     {
+        // KPI Today
+        $today = date('Y-m-d');
+        $total_transaksi_today = $this->Penjualan_model->count_today();
+        $total_penjualan_today = $this->Penjualan_model->total_today();
 
-        // Cek session agar tidak bisa diakses tanpa login
+        // Stok Data
+        $stok_habis = count($this->Stok_model->get_stok_habis());
+        $nilai_stok = $this->Stok_model->get_nilai_stok();
 
-        if (!$this->session->userdata('role')) {
+        // Best Sellers (Top 5)
+        $best_sellers = $this->get_top_sellers();
 
-            redirect('auth');
-        }
+        // Recent Transactions
+        $recent_transactions = $this->get_recent_transactions();
 
-
-
-        // Gunakan ARRAY untuk $data
+        // This Month
+        $date_from = date('Y-m-01');
+        $date_to = date('Y-m-t');
+        $this->db->select('SUM(total_harga) as total_bulan, COUNT(*) as trx_bulan');
+        $this->db->from('penjualan');
+        $this->db->where('status', 'selesai');
+        $this->db->where("DATE(tgl_penjualan) >=", $date_from);
+        $this->db->where("DATE(tgl_penjualan) <=", $date_to);
+        $monthly = $this->db->get()->row_array();
 
         $data = [
-
-            'title' => 'Dashboard',
-
-            'subtitle' => 'Selamat Datang'
-
+            'title' => 'Dashboard Admin POS',
+            'total_transaksi_today' => $total_transaksi_today,
+            'total_penjualan_today' => $total_penjualan_today,
+            'stok_habis' => $stok_habis,
+            'nilai_stok' => $nilai_stok,
+            'best_sellers' => $best_sellers,
+            'recent_transactions' => $recent_transactions,
+            'total_bulan' => $monthly['total_bulan'] ?? 0,
+            'trx_bulan' => $monthly['trx_bulan'] ?? 0,
+            'total_produk' => count($this->Produk_model->get_all()),
+            'total_pelanggan' => $this->Pelanggan_model->count_all()
         ];
 
+        $this->load->view('dashboard/index', $data);
+    }
 
+    // ========================================
+    // API: GET CHART DATA
+    // ========================================
 
-        // Panggil library template
+    // Chart: Penjualan 7 Hari Terakhir
+    public function chart_sales_7days()
+    {
+        $chart_data = array();
+        for ($i = 6; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime('-' . $i . ' days'));
+            $this->db->select_sum('total_harga');
+            $this->db->from('penjualan');
+            $this->db->where('status', 'selesai');
+            $this->db->where('DATE(tgl_penjualan)', $date);
+            $result = $this->db->get()->row_array();
 
-        $this->template->load('adminlte/dashboard', $data);
+            $chart_data[] = [
+                'tanggal' => date('D, d M', strtotime($date)),
+                'total' => floatval($result['total_harga'] ?? 0)
+            ];
+        }
+        echo json_encode($chart_data);
+    }
+
+    // Chart: Penjualan per Kategori
+    public function chart_sales_by_category()
+    {
+        $today = date('Y-m-d');
+        $this->db->select('k.nama_kategori, SUM(d.subtotal) as total');
+        $this->db->from('detail_penjualan d');
+        $this->db->join('produk p', 'd.id_produk = p.id_produk');
+        $this->db->join('kategori_produk k', 'p.id_kategori = k.id_kategori');
+        $this->db->join('penjualan pj', 'd.id_penjualan = pj.id_penjualan');
+        $this->db->where('DATE(pj.tgl_penjualan)', $today);
+        $this->db->where('pj.status', 'selesai');
+        $this->db->group_by('k.id_kategori');
+        $this->db->order_by('total', 'DESC');
+
+        $results = $this->db->get()->result_array();
+
+        $chart_data = [
+            'labels' => array_column($results, 'nama_kategori'),
+            'data' => array_column($results, 'total')
+        ];
+
+        echo json_encode($chart_data);
+    }
+
+    // Chart: Top Products Today
+    public function chart_top_products()
+    {
+        $today = date('Y-m-d');
+        $this->db->select('p.nama_produk, SUM(d.qty) as total_qty, SUM(d.subtotal) as total');
+        $this->db->from('detail_penjualan d');
+        $this->db->join('produk p', 'd.id_produk = p.id_produk');
+        $this->db->join('penjualan pj', 'd.id_penjualan = pj.id_penjualan');
+        $this->db->where('DATE(pj.tgl_penjualan)', $today);
+        $this->db->where('pj.status', 'selesai');
+        $this->db->group_by('d.id_produk');
+        $this->db->order_by('total_qty', 'DESC');
+        $this->db->limit(5);
+
+        $results = $this->db->get()->result_array();
+
+        $chart_data = [
+            'labels' => array_column($results, 'nama_produk'),
+            'data' => array_column($results, 'total_qty')
+        ];
+
+        echo json_encode($chart_data);
+    }
+
+    // Chart: Hourly Sales
+    public function chart_hourly_sales()
+    {
+        $today = date('Y-m-d');
+        $hourly_data = array();
+
+        for ($hour = 0; $hour < 24; $hour++) {
+            $start_time = $today . ' ' . str_pad($hour, 2, '0', STR_PAD_LEFT) . ':00:00';
+            $end_time = $today . ' ' . str_pad($hour, 2, '0', STR_PAD_LEFT) . ':59:59';
+
+            $this->db->select_sum('total_harga');
+            $this->db->from('penjualan');
+            $this->db->where('status', 'selesai');
+            $this->db->where('tgl_penjualan >=', $start_time);
+            $this->db->where('tgl_penjualan <=', $end_time);
+            $result = $this->db->get()->row_array();
+
+            $hourly_data[] = [
+                'jam' => str_pad($hour, 2, '0', STR_PAD_LEFT) . ':00',
+                'total' => floatval($result['total_harga'] ?? 0)
+            ];
+        }
+
+        echo json_encode($hourly_data);
+    }
+
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+
+    private function get_top_sellers()
+    {
+        $today = date('Y-m-d');
+        $this->db->select('p.nama_produk, SUM(d.qty) as total_qty, SUM(d.subtotal) as total');
+        $this->db->from('detail_penjualan d');
+        $this->db->join('produk p', 'd.id_produk = p.id_produk');
+        $this->db->join('penjualan pj', 'd.id_penjualan = pj.id_penjualan');
+        $this->db->where('DATE(pj.tgl_penjualan)', $today);
+        $this->db->where('pj.status', 'selesai');
+        $this->db->group_by('d.id_produk');
+        $this->db->order_by('total_qty', 'DESC');
+        $this->db->limit(5);
+
+        return $this->db->get()->result_array();
+    }
+
+    private function get_recent_transactions()
+    {
+        $this->db->select('p.id_penjualan, p.no_transaksi, p.total_harga, p.tgl_penjualan, 
+                          c.nama_pelanggan, p.metode_bayar, p.status');
+        $this->db->from('penjualan p');
+        $this->db->join('pelanggan c', 'p.id_pelanggan = c.id_pelanggan', 'left');
+        $this->db->order_by('p.tgl_penjualan', 'DESC');
+        $this->db->limit(10);
+
+        return $this->db->get()->result_array();
     }
 
     public function chartPemilikUsahaBulanIni()
